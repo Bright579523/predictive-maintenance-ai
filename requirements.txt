@@ -6,4 +6,6 @@ matplotlib
 seaborn
 requests
 joblib
+
 google-generativeai
+xgboost
