@@ -88,7 +88,9 @@ def load_artifacts():
         model = joblib.load('predictive_maintenance_model.pkl')
         scaler = joblib.load('scaler.pkl')
         return model, scaler
-    except: return None, None
+    except Exception as e:
+        st.error(f"⚠️ Error loading model: {e}")
+        return None, None
 
 model, scaler = load_artifacts()
 
@@ -351,4 +353,5 @@ with tab4:
     for bar in bars:
         ax.text(bar.get_width()+10, bar.get_y()+bar.get_height()/2, f'€{bar.get_width():,.0f}', va='center', fontweight='bold', color='white')
     dark_plot(fig, ax) 
+
     st.pyplot(fig, use_container_width=False)
