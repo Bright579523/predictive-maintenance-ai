@@ -61,7 +61,8 @@ To run this project on your local machine, follow these steps:
    git clone [https://github.com/Bright579523/predictive-maintenance-ai.git](https://github.com/Bright579523/predictive-maintenance-ai.git)
    cd predictive-maintenance-ai
 
-   About the Author
+   
+About the Author
 Watcharaphol Anektanaseth Master's Student in Data Science | Ex-Sales Engineer (Cutting Tools)
 
 I am passionate about applying data science to solve real-world problems in the manufacturing industry. My goal is to integrate my decade of engineering expertise with advanced machine learning techniques to optimize production efficiency. 
