@@ -1,5 +1,9 @@
 # 🏭 Smart CNC: Predictive Maintenance & ROI Dashboard
 
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://cnc-predictivewithai.streamlit.app/)
+![Python](https://img.shields.io/badge/Python-3.9%2B-blue)
+![Machine Learning](https://img.shields.io/badge/AI-Scikit--Learn%20%7C%20XGBoost-orange)
+
 Welcome to **Smart CNC Analytics**! This project is an **AI-Driven Predictive Maintenance** system designed to help manufacturing facilities reduce machine downtime and analyze business ROI in real-time.
 👉 **Live Demo:** [https://cnc-predictivewithai.streamlit.app/](https://cnc-predictivewithai.streamlit.app/)
 
