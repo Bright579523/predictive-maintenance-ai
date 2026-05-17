@@ -136,7 +136,7 @@ This will create the FAISS vector database in `models/faiss_index/`.
 streamlit run app.py
 ```
 
-Open [http://localhost:8501](http://localhost:8501) in your browser.
+Open [Streamlit]((https://cnc-predictivewithai.streamlit.app/)) in your browser.
 
 ---
 
