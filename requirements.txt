@@ -6,6 +6,19 @@ matplotlib
 seaborn
 requests
 joblib
+plotly
+python-dotenv
 
 google-generativeai
 xgboost
+mlflow
+optuna
+shap
+evidently
+imbalanced-learn
+langchain
+langchain-groq
+langchain-community
+faiss-cpu
+pypdf
+sentence-transformers

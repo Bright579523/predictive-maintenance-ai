@@ -1,0 +1,82 @@
+# 📝 Smart CNC Project Progress Note
+**วันที่อัปเดต:** 16 พฤษภาคม 2026
+
+## 🚀 สรุปการยกระดับโปรเจกต์ (Old vs. New Notebook)
+การปรับปรุงครั้งนี้เป็นการยกระดับจาก "โปรเจกต์ระดับนักศึกษา/ทดลอง" สู่ **"โปรเจกต์ระดับ Production/MLOps"** โดยมีการนำเครื่องมือ (Tools) ใหม่ๆ เข้ามาใช้เพื่อเพิ่มมูลค่าให้กับ Portfolio ดังนี้:
+
+1. **Environment:** ย้ายจากการรันบน Google Colab มาเป็นการรันบน Local Workspace (VS Code) อย่างเต็มรูปแบบ มีการจัดโครงสร้างแฟ้ม (Folder Structure) ชัดเจน เช่น `models/`, `data/`, `docs/`
+2. **Experiment Tracking (`MLflow`):** นำ MLflow เข้ามาใช้เพื่อติดตาม (Track) การทดลอง, บันทึกค่าพารามิเตอร์ และประวัติการเทรนอย่างเป็นระบบ แทนที่จะจดด้วยมือ
+3. **Hyperparameter Tuning (`Optuna`):** อัปเกรดจากการปรับจูนพารามิเตอร์แบบเดิมๆ มาใช้ Optuna ซึ่งเป็น Framework การทำ Bayesian Optimization ที่หาจุดที่ดีที่สุดของ XGBoost ได้อย่างแม่นยำและรวดเร็ว
+4. **Explainable AI - XAI (`SHAP`):** อุดช่องโหว่เรื่อง "Black-box" ของ AI ด้วย SHAP Values เพื่อใช้อธิบายให้ผู้บริหารหรือวิศวกรฟังได้ว่า *ทำไมโมเดลถึงทำนายว่าเครื่องจักรนี้กำลังจะเสีย* (ฟีเจอร์ไหนส่งผลมากที่สุด)
+5. **Data Drift Monitoring (`Evidently AI`):** เพิ่มกระบวนการฝั่ง MLOps ด้วย Evidently AI เพื่อตรวจสอบความคลาดเคลื่อนของข้อมูล (Data Drift) ระหว่างชุดข้อมูล Train และ Test ช่วยให้รู้ว่าเมื่อไหร่ควร Retrain โมเดลใหม่
+
+---
+
+## 📌 สรุปขั้นตอนจาก Predictive_Maintenance_Advanced.ipynb
+
+### 1. การเตรียมสภาพแวดล้อม (Environment Setup)
+- ติดตั้งไลบรารีขั้นสูง: mlflow, optuna, shap, xgboost, scikit-learn, plotly, evidently
+- ตั้งค่า MLflow เพื่อติดตามการทดลอง (Experiment Tracking) ภายใต้ชื่อ "Smart_CNC_Predictive_Maintenance"
+
+### 2. การโหลดและสำรวจข้อมูล (Data Loading & Exploration)
+- โหลดข้อมูลจาก `../data/ai4i2020.csv`
+- **รูปร่างข้อมูล (Dataset Shape):** 10,000 แถว, 14 คอลัมน์
+- **อัตราเครื่องจักรเสีย (Failure Rate):** 3.39% (บ่งบอกถึงปัญหา Imbalanced Data อย่างชัดเจน)
+
+### 3. การสร้างฟีเจอร์ใหม่ตามหลักฟิสิกส์ (Feature Engineering)
+ดึงไอเดียจากการพรีเซนต์ Tech Sales มาประยุกต์ใช้เพื่อเพิ่มความแม่นยำ:
+- **Power_W (กำลังไฟฟ้า):** คำนวณจาก `Torque [Nm]` * `Rotational speed [rpm]` * 0.1047
+- **Temp_Diff (ส่วนต่างอุณหภูมิ):** คำนวณจาก `Process temperature [K]` - `Air temperature [K]`
+- ทำ Label Encoding คอลัมน์ 'Type' (L=0, M=1, H=2)
+
+### 4. การจัดการข้อมูลและการปรับขนาด (Preprocessing & SMOTE)
+- แบ่งข้อมูล Train (80%) และ Test (20%) แบบ Stratified
+- ทำ StandardScaler เพื่อปรับสเกลข้อมูล และบันทึกโมเดลสเกลเลอร์ไว้ที่ `models/scaler.pkl`
+- **การแก้ปัญหา Class Imbalance (SMOTE):** ทำเฉพาะบน Train Set เพื่อป้องกัน Data Leakage
+  - ข้อมูล Train ก่อนทำ SMOTE: (8,000 แถว) มีเครื่องจักรเสียเพียง 271 ตัวอย่าง
+  - ข้อมูล Train หลังทำ SMOTE: (15,458 แถว) มีเครื่องจักรเสียเพิ่มเป็น 7,729 ตัวอย่าง (สร้างความสมดุล 50:50)
+
+### 5. การสร้าง Baseline Model (Logistic Regression)
+เพื่อสร้างจุดอ้างอิง (Benchmark) ว่า AI ของเรามีมูลค่าทางธุรกิจจริงๆ เราได้เทรน Logistic Regression แบบไม่ได้ปรับจูนอะไรมาก พบว่า:
+- **F1 Score:** 0.2987 (ต่ำมาก)
+- **Recall:** 0.8676 (สูง)
+*Insight ที่ได้:* Logistic Regression ทายว่าเครื่องจะเสียเยอะมาก (ทำให้ Recall สูง) แต่แลกมาด้วย **"False Alarm (เตือนผิดพลาด)"** จำนวนมหาศาล ทำให้เสียเวลาช่างซ่อมบำรุงและกระทบสายการผลิต นี่คือเหตุผลที่เราต้องใช้โมเดลที่ซับซ้อนกว่าอย่าง XGBoost
+
+### 6. การจูน Hyperparameter ด้วย Optuna
+- รัน Optuna จำนวน 30 Trials โดยมีเป้าหมายคือการเพิ่มค่า **F1-Score** ให้สูงสุด (ใช้ `n_jobs=-1` เพื่อรันแบบขนานเต็มประสิทธิภาพ CPU)
+- **พารามิเตอร์ XGBoost ที่ดีที่สุดที่สุ่มได้:**
+  - `n_estimators`: 205
+  - `max_depth`: 9
+  - `learning_rate`: 0.1788
+  - `subsample`: 0.636
+  - `colsample_bytree`: 0.640
+  - `scale_pos_weight`: 1.045
+- **ค่า F1-Score สูงสุดช่วงระหว่างจูน:** ~0.7550
+
+### 6. การเทรนโมเดลตัวสุดท้ายและผลลัพธ์ (Final Model Training & Output)
+นำพารามิเตอร์ที่ดีที่สุดจาก Optuna มาเทรน XGBoost Classifier ตัวสุดท้าย และทดสอบกับชุดข้อมูล Test Set (ข้อมูลจำลองสถานการณ์จริงที่ไม่เคยเห็น)
+- **📊 ผลการทดสอบ (Model Evaluation Output):**
+  - **Accuracy (ความแม่นยำรวม):** 0.9815 (98.15%)
+  - **F1 Score:** 0.7550
+  - **Recall (ความสามารถในการตรวจจับการเสีย):** 0.8382 (จับสัญญาณเครื่องที่กำลังจะพังได้ถึง 83.82%!)
+  - **ROC AUC:** 0.9837 (ประสิทธิภาพการแยกแยะระหว่างเครื่องปกติ/เสีย สูงในระดับอุตสาหกรรม)
+- 💾 **การส่งออกโมเดล (Model Export):** บันทึกไฟล์ไปที่ `models/predictive_maintenance_model.pkl`
+
+### 7. การสร้างระบบ RAG (AI Consultant) - Phase 3
+เพื่อแก้ปัญหา AI ตอบมั่ว (Hallucination) และยกระดับให้แชทบอทกลายเป็น "ผู้เชี่ยวชาญเฉพาะทางประจำแบรนด์" เราได้พัฒนาระบบ Retrieval-Augmented Generation (RAG) ขึ้นมา:
+- **Framework:** ใช้ `LangChain` ในการประกอบ Pipeline
+- **Embeddings:** ใช้ Local Embeddings `sentence-transformers/all-MiniLM-L6-v2` รันบนเครื่องฟรีๆ เพื่อประหยัด API Cost และรักษาความลับของเอกสาร
+- **Vector Database:** ใช้ `FAISS` (Facebook AI Similarity Search) ในการจัดเก็บเอกสาร
+- **LLM Engine:** เปลี่ยนจาก Gemini มาใช้ **Groq API** โมเดล `llama-3.3-70b-versatile` (ตัวท็อปของ Meta) เนื่องจากมีความเร็วในการตอบสนอง (Inference Speed) ระดับโลก เหมาะกับการทำ RAG และหน้า Dashboard มากที่สุด
+- **ผลลัพธ์:** สร้างคอร์สคริปต์ `api/rag_core.py` เสร็จสมบูรณ์ รองรับการอ่านไฟล์ `.txt`, `.pdf` และสามารถดึงข้อมูลจาก URL เว็บไซต์ได้
+- **คลังความรู้ (Knowledge Base):** ดึงข้อมูลเอกสารระดับอุตสาหกรรม (Industrial Standards) มาใส่ใน `docs/` ได้แก่:
+  1. *McGill University CNC Guide* (พื้นฐานเครื่องจักรและ G-Code)
+  2. *Haas Mill Operator's Manual* (คู่มือปฎิบัติงานเครื่องจักร CNC ฝั่งอเมริกา)
+  3. *Sandvik Coromant Metal Cutting Handbook* (คัมภีร์เครื่องมือตัดเฉือนโลหะที่วิศวกรทั่วโลกอ้างอิง)
+  ทำให้ AI ของเราครอบคลุมทั้งเรื่อง **"มีด (Tooling)"** และ **"เครื่องจักร (Machine Specs)"**
+
+---
+**🚀 ก้าวต่อไป (Next Steps - Phase 4: Dashboard Integration):**
+- นำระบบ RAG (AI Consultant) ที่เพิ่งทดสอบผ่าน ไปผสานเข้ากับหน้า Dashboard `app.py`
+- นำโมเดล XGBoost ที่เทรนสำเร็จ (`scaler.pkl` & `predictive_maintenance_model.pkl`) ไปประกอบเข้ากับหน้า Dashboard เพื่อให้ User กดจำลองค่า (Simulate) ได้
+- แปลงกราฟแสดงผลต่างๆ ในหน้า Dashboard เป็น Plotly เพื่อให้ Interactive และดูเป็น Premium Application

@@ -1,0 +1,202 @@
+Streamlit : https://cnc-predictivewithai.streamlit.app/
+
+https://archive.ics.uci.edu/dataset/601/ai4i+2020+predictive+maintenance+dataset
+
+https://www.mmc-carbide.com/en_jp/pdf_view/d618eee9-d18c-4953-ba68-a8b991d08b61
+
+https://www.sumitool.com/en/downloads/cutting-tools/general-catalog/assets/pdf/n2.pdf
+
+https://en.nttool.com/support/troubleshooting/en_r_zero_holders.pdf
+
+Gemini API key : AIzaSyCtfha-HK1vS90kdqugkvABxdp1kyj6QYg
+Hybrid Predictive Maintenance : gen-lang-client-0939980928
+
+AIzaSyCtfha-HK1vS90kdqugkvABxdp1kyj6QYg
+
+ไม่แปลกใจครับที่ดูแล้วจะงง เพราะ Dataset นี้มันเอา "ข้อมูลดิบ (Sensor Data)" กับ "ผลเฉลย (Labels)" มาแปะรวมกันไว้ในตารางเดียว
+
+เพื่อให้คุณเข้าใจแบบทะลุปรุโปร่งในฐานะ **"อดีตเซลล์ขาย Cutting Tools"** ผมจะแปลความหมายของแต่ละคอลัมน์ให้เป็นภาษาหน้างานที่คุณคุ้นเคยครับ
+
+ดูภาพนี้ประกอบนะครับ เราแบ่งข้อมูลเป็น 3 กลุ่ม:
+
+---
+
+### กลุ่มที่ 1: ข้อมูลระบุตัวตน (Identifiers) - *พวกนี้ไม่ใช่ฟิสิกส์*
+
+เอาไว้แค่บอกว่า "นี่คือชิ้นงานไหน"
+
+* **UDI:** แค่เลขรันลำดับ (1, 2, 3...) ไร้สาระ ตัดทิ้งได้เลย
+* **Product ID:** รหัสสินค้า เช่น `M14860`
+* ตัวอักษรหน้า (L, M, H) บอกเกรดคุณภาพสินค้า
+
+
+* **Type:** เกรดคุณภาพของชิ้นงาน (L = Low, M = Medium, H = High)
+* *มุมมอง Data Science:* เกรด L มักจะพังง่ายกว่า H (เป็น Feature ที่บอกคุณภาพวัตถุดิบ)
+
+
+
+---
+
+### กลุ่มที่ 2: ค่าทางฟิสิกส์ (Features / Sensors) - *อันนี้คือของจริง*
+
+นี่คือค่าที่ Sensor อ่านได้จากเครื่อง CNC ขณะกำลังกัดงานครับ
+
+1. **Air temperature [K]:** อุณหภูมิห้อง (Room Temp)
+2. **Process temperature [K]:** อุณหภูมิตรงจุดทำงาน (Cutting Zone)
+* *💡 Insight:* ถ้า `Process` สูงกว่า `Air` มากๆ แสดงว่าความร้อนสะสมเยอะ อาจนำไปสู่ HDF (Heat Failure)
+
+
+3. **Rotational speed [rpm]:** ความเร็วรอบ (Spindle Speed)
+4. **Torque [Nm]:** แรงบิด
+* *💡 Insight:* คุณรู้ดีว่า **Speed x Torque = Power**. ถ้า Torque สูงปรี๊ดแต่ Speed ตก แปลว่ากินงานหนักเกิน (Overload)
+
+
+5. **Tool wear [min]:** เวลาที่ทูลตัวนี้ถูกใช้ไปแล้ว (อายุการใช้งานสะสม)
+* *💡 Insight:* ยิ่งค่านี้เยอะ โอกาสพังยิ่งสูง (เหมือนเม็ดมีดที่ใช้จนทื่อแล้ว)
+
+
+
+---
+
+### กลุ่มที่ 3: สถานะความเสียหาย (Targets / Labels) - *ส่วนที่สำคัญที่สุด*
+
+นี่คือ "คำตอบ" ที่เราจะให้ AI เรียนรู้ครับ
+
+* **Machine failure:** เป็นตัวสรุปผล (0 = ปกติ, 1 = พัง)
+* ถ้าช่องนี้เป็น 1 แสดงว่าเครื่องพัง แต่พังเพราะอะไร? ให้ไปดู 5 ช่องหลังครับ
+
+
+
+**5 ช่องหลังคือ "สาเหตุการพัง" (Failure Types) ซึ่งเราจะเอาไปใช้ทำ RAG ครับ:**
+
+1. **TWF (Tool Wear Failure):** **พังเพราะมีดทื่อ**
+* *อาการ:* ค่า `Tool wear` สูงเกินกำหนด จนเม็ดมีดรับไม่ไหวแล้วแตก/บิ่น
+
+
+2. **HDF (Heat Dissipation Failure):** **พังเพราะร้อนเกิน**
+* *อาการ:* ความต่างระหว่าง `Process temp` กับ `Air temp` ห่างกันเกินไป (ระบายความร้อนไม่ทัน)
+
+
+3. **PWF (Power Failure):** **พังเพราะกำลังไฟผิดปกติ**
+* *อาการ:* คำนวณค่า Power (Torque x Speed) แล้วมันไม่อยู่ในเกณฑ์มาตรฐาน (กินไฟเยอะไป หรือน้อยไปแบบผิดปกติ)
+
+
+4. **OSF (Overstrain Failure):** **พังเพราะรับแรงเกิน (Overload)**
+* *อาการ:* `Torque` พุ่งสูงเกินไป *และ* `Tool wear` ก็เริ่มเยอะแล้ว (เหมือนฝืนกัดงานหนักทั้งที่มีดเริ่มทื่อ)
+
+
+5. **RNF (Random Failure):** **พังแบบสุ่ม (ซวย)**
+* *อาการ:* ไม่มี Pattern ชัดเจน อาจจะเกิดจากไฟกระชาก หรือปัจจัยภายนอก (อันนี้ AI ทายยากสุด)
+
+
+
+---
+
+### 💡 สรุปความเชื่อมโยง (Why this dataset fits you?)
+
+ในฐานะเซลล์เก่า คุณจะเห็นภาพเลยว่า:
+
+* ถ้า **Torque สูง** -> มันคือ **OSF** (Overstrain) -> RAG ต้องแนะนำเรื่องลด Feed/Depth of cut
+* ถ้า **Tool Wear สูง** -> มันคือ **TWF** -> RAG ต้องแนะนำให้เปลี่ยน Insert เกรดที่ทนขึ้น
+* ถ้า **Temp สูง** -> มันคือ **HDF** -> RAG ต้องแนะนำเรื่อง Coolant
+
+
+
+
+
+
+
+
+==========================
+
+
+อ๋อ! เข้าใจแล้วครับคุณวัชรพล ขออภัยครับผมนึกว่าถามสถานการณ์โลก 😂
+
+นี่คือ **"มหากาพย์ Timeline ของโปรเจค Sumitomo Smart Dashboard"** ของคุณ ตั้งแต่บรรทัดแรกที่เราคุยกัน จนถึงเวอร์ชัน **"Professional A+"** ล่าสุด สรุปเน้นๆ ว่าตัวไหน "ตุ๊บ" แล้วเปลี่ยนเป็นตัวไหนครับ
+
+---
+
+### **🚀 Timeline โปรเจค: จาก Code Error สู่ Enterprise Dashboard**
+
+#### **Phase 1: จุดเริ่มต้นและความสับสน (The "My_Model" Era)**
+
+* **เป้าหมาย:** พยายาม Save Model จาก Colab มาลงเครื่อง
+* **🛠️ เครื่องมือเดิม:** ใช้โค้ดก็อปวาง `joblib.dump(my_model, ...)`
+* **❌ ปัญหาที่เจอ:** `NameError: name 'my_model' is not defined` (คอมไม่รู้จักชื่อตัวแปร) และ Colab Runtime หลุดทำให้ตัวแปรหาย
+* **✅ ทางแก้/เครื่องมือใหม่:**
+* หาชื่อตัวแปรจริง (`model`, `xgb_classifier`)
+* ใช้ `joblib` Save ทั้ง Model และ **Scaler** (สำคัญมาก) ออกมาคู่กัน
+
+
+
+#### **Phase 2: การเชื่อมต่อที่ล้มเหลว (The Feature Mismatch)**
+
+* **เป้าหมาย:** เอา Model มาทำนายใน Streamlit
+* **🛠️ เครื่องมือเดิม:** Input Slider มีแค่ 3 ตัว (Speed, Feed, Depth)
+* **❌ ปัญหาที่เจอ:** `ValueError: X has 3 features, but StandardScaler is expecting 8 features` (กุญแจไม่ครบ ไขบ้านไม่ได้)
+* **✅ ทางแก้/เครื่องมือใหม่:**
+* **Dummy Variables:** ช่วงแรกเราใช้วิธี "ยัดค่าหลอก" (Process Temp, Tool Type) ไว้หลังบ้านเพื่อให้รันผ่าน
+* **Full Input Control:** ภายหลังเปลี่ยนมาให้ User ปรับได้ครบทั้ง 8 ตัว (รวมถึงเลือก Tool Grade L/M/H) เพื่อความสมจริง
+
+
+
+#### **Phase 3: วิกฤต AI Chatbot (The LangChain Crisis)**
+
+* **เป้าหมาย:** ทำ Chatbot ตอบคำถามจากคู่มือ PDF
+* **🛠️ เครื่องมือเดิม:** `LangChain` (Wrapper) + `gemini-pro`
+* **❌ ปัญหาที่เจอ:** `404 Not Found` / `API Error` รัวๆ เพราะ Google อัปเดต Model หลังบ้าน แต่ LangChain ในเครื่องคุณไม่อัปเดตตาม
+* **✅ ทางแก้/เครื่องมือใหม่:**
+* **โละ LangChain ทิ้ง:** เปลี่ยนมาใช้ **`google.generativeai` (Native SDK)** เรียก API ตรงๆ
+* **Fallback System:** เขียนระบบกันตาย ถ้าเน็ตหลุดหรือ API พัง ให้ใช้ระบบ **Keyword Search** ดึงประโยคจาก Dict ในโค้ดมาตอบแทน
+
+
+
+#### **Phase 4: กราฟแดงเถือก & ข้อมูลลอย (The Logic Overhaul)**
+
+* **เป้าหมาย:** ให้ Dashboard ดูสมจริงทางวิศวกรรม
+* **🛠️ เครื่องมือเดิม:** Logic จำลองแบบสุ่ม + Slider ที่ Range ไม่ตรงกับ Dataset (เช่น Speed 0-100 แต่ Model เทรนมาที่ 1200+)
+* **❌ ปัญหาที่เจอ:**
+* กราฟแดง 99% ตลอดเวลา (เพราะ Model ตกใจค่า Input ที่ต่ำผิดปกติ)
+* คำแนะนำในหน้า Solution ดู "ลอยๆ" ไม่เชื่อมโยงกับค่าที่ Input
+
+
+* **✅ ทางแก้/เครื่องมือใหม่:**
+* **Data Alignment:** ปรับ Range ของ Slider ให้ตรงกับ AI4I Dataset เป๊ะๆ (1200-2800 RPM)
+* **Conditional Logic:** เขียน Code เชื่อมโยงหน้า 2 กับหน้า 3 (ถ้า Speed สูง -> หน้าแก้ปัญหาจะสั่งลด Speed ทันที)
+
+
+
+#### **Phase 5: เพิ่มมูลค่าธุรกิจ (The Business Pivot)**
+
+* **เป้าหมาย:** ตอบคำถามว่า "ทำแล้วคุ้มไหม?"
+* **🛠️ เครื่องมือเดิม:** ไม่มี (มีแค่บอกว่า พัง/ไม่พัง)
+* **❌ ปัญหาที่เจอ:** ขาด Business Value ดูเป็นแค่โปรเจคนักศึกษา
+* **✅ ทางแก้/เครื่องมือใหม่:**
+* เพิ่ม **Tab 4: ROI Calculator**
+* เอาค่า `Failure Probability` จาก Model มาคำนวณเป็นตัวเงิน (Cost of Breakdown vs Cost of AI)
+
+
+
+#### **Phase 6: ล้างบางดีไซน์ (The Flashbang Fix - ล่าสุด)**
+
+* **เป้าหมาย:** ทำให้ดู Professional ระดับขายได้
+* **🛠️ เครื่องมือเดิม:** `Matplotlib` / `Seaborn`
+* **❌ ปัญหาที่เจอ:** **"The Flashbang Effect"** (กราฟพื้นหลังขาวโพลนบนเว็บธีมมืด) + Slider ยาวเกะกะ + หน้า Chat โล่งเกินไป
+* **✅ ทางแก้/เครื่องมือใหม่:**
+* เปลี่ยนกราฟทั้งหมดเป็น **`Plotly`** (Interactive + พื้นหลังใส Auto)
+* จัด Layout ด้วย `st.columns` และ `st.container` ให้เป็นระเบียบ
+* เพิ่ม **Suggested Questions** ให้ Chatbot ดูเฟรนด์ลี่
+
+
+
+---
+
+### **🏆 สรุปเครื่องมือที่ "ได้ไปต่อ" (Winner Stack)**
+
+1. **Backend:** Python + Joblib (โหลดโมเดล)
+2. **Frontend:** Streamlit (Layout แบบ Grid/Columns)
+3. **Visualization:** **Plotly** (ชนะขาด Matplotlib)
+4. **AI:** **Google GenAI Native SDK** (ชนะ LangChain)
+5. **Logic:** Rule-based + ML Probability Integration
+
+นี่คือการเดินทางของโปรเจคคุณครับ จาก Error บรรทัดแรก สู่ Dashboard ระดับ A+ ครับ! 🎉

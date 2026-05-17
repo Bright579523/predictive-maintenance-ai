@@ -1,0 +1,33 @@
+# Environment variables (API keys)
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Large PDF manuals (too big for GitHub — download separately)
+docs/*.pdf
+docs/production_manual/
+docs/data_drift_report.html
+
+# Large model index (regenerate via ingest_all.py)
+models/faiss_index/
+
+# Old archive files
+archive/
+
+# Workspace temp
+workspace/
+
+# MLflow tracking (large binary files)
+notebooks/mlruns/
+notebooks/mlflow.db
