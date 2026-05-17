@@ -23,7 +23,16 @@ class CNCExpertRAG:
         # 2. Initialize Groq LLM (Llama 3 70B - Very Smart & Fast)
         groq_api_key = os.environ.get("GROQ_API_KEY")
         if not groq_api_key:
-            print("WARNING: GROQ_API_KEY not found in .env file!")
+            # Fallback to Streamlit secrets for cloud deployment
+            try:
+                import streamlit as st
+                if "GROQ_API_KEY" in st.secrets:
+                    groq_api_key = st.secrets["GROQ_API_KEY"]
+            except:
+                pass
+
+        if not groq_api_key:
+            print("WARNING: GROQ_API_KEY not found in .env or st.secrets!")
             self.llm = None
         else:
             self.llm = ChatGroq(
