@@ -1,6 +1,7 @@
 # 🏭 Smart CNC Predictive Maintenance System
 
 > **AI-Driven Failure Prediction | Explainable AI (SHAP) | RAG Consultant | ROI Analysis**
+> [(https://cnc-predictivewithai.streamlit.app/)]
 
 An enterprise-grade predictive maintenance platform for CNC machining operations. Built with XGBoost, LangChain RAG, and Streamlit — designed to reduce unplanned downtime by up to 35% and provide real-time, explainable failure risk assessment.
 
@@ -136,7 +137,7 @@ This will create the FAISS vector database in `models/faiss_index/`.
 streamlit run app.py
 ```
 
-Open [Streamlit]((https://cnc-predictivewithai.streamlit.app/)) in your browser.
+Open [Streamlit](https://cnc-predictivewithai.streamlit.app/) in your browser.
 
 ---
 
